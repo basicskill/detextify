@@ -1,7 +1,7 @@
 from detextify.utils import TextBox
 from paddleocr import PaddleOCR
 from typing import Sequence
-from PIL import Image
+import numpy as np
 
 import logging
 paddle_logger = logging.getLogger("ppocr").setLevel(logging.ERROR)
@@ -25,8 +25,8 @@ class PaddleTextDetector:
     self.ocr = PaddleOCR(use_angle_cls=True, use_gpu=True, lang="en")
     self.pad_size = pad_size
 
-  def detect_text(self, image_path: str) -> Sequence[TextBox]:
-    result = self.ocr.ocr(image_path, cls=True)[0]
+  def detect_text(self, image: np.ndarray) -> Sequence[TextBox]:
+    result = self.ocr.ocr(image, cls=True)[0]
     text_boxes = []
 
     for line in result:
@@ -44,16 +44,16 @@ class PaddleTextDetector:
       w = max(xs) - tl_x
 
       if h < 0 or w < 0:
-        logger.error(f"Malformed bounding box from Paddle: {points}")
+        paddle_logger.error(f"Malformed bounding box from Paddle: {points}")
 
       if self.pad_size:
+          image_height, image_width = image.shape[:2]
+
           tl_y = max(0, tl_y - self.pad_size)
           tl_x = max(0, tl_x - self.pad_size)
 
-          image = Image.open(image_path)
-          max_h = image.height - tl_x
-          h = min(h + self.pad_size, image.height - tl_y)
-          w = min(w + self.pad_size, image.width - tl_x)
+          h = min(h + self.pad_size, image_height - tl_y)
+          w = min(w + self.pad_size, image_width - tl_x)
 
       text_boxes.append(TextBox(int(tl_y), int(tl_x), int(h), int(w), text))
     return text_boxes

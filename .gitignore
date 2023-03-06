@@ -3,3 +3,5 @@ poetry.lock
 detextify/__pycache__
 detextify/poetry.lock
 tests/__pycache__
+.env
+__pycache__

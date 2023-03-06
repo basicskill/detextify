@@ -1,11 +1,13 @@
 """In-painting models."""
 import io
-import math
+import numpy as np
 import openai
+import base64
 import replicate
 import requests
 import tempfile
 import torch
+import cv2
 
 from PIL import Image, ImageDraw
 from diffusers import StableDiffusionInpaintPipeline
@@ -20,8 +22,8 @@ class Inpainter:
   # TODO(julia): Run some experiments to determine the best prompt.
   DEFAULT_PROMPT = "plain background"
 
-  def inpaint(self, in_image_path: str, text_boxes: Sequence[TextBox], prompt: str, out_image_path: str):
-    pass
+  # def inpaint(self, in_image_path: str, text_boxes: Sequence[TextBox], prompt: str, out_image_path: str):
+  #   pass
 
 
 class DalleInpainter(Inpainter):
@@ -36,27 +38,33 @@ class DalleInpainter(Inpainter):
     mask = Image.new("RGBA", (width, height), (0, 0, 0, 1))  # fully opaque
     mask_draw = ImageDraw.Draw(mask)
     for text_box in text_boxes:
-      mask_draw.rectangle(xy=(text_box.x, text_box.y, text_box.x + text_box.h, text_box.y + text_box.w),
+      mask_draw.rectangle(xy=(text_box.y, text_box.x, text_box.y + text_box.h, text_box.x + text_box.w),
                           fill=(0, 0, 0, 0))  # fully transparent
     # Convert mask to bytes.
     bytes_arr = io.BytesIO()
     mask.save(bytes_arr, format="PNG")
     return bytes_arr.getvalue()
 
-  def inpaint(self, in_image_path: str, text_boxes: Sequence[TextBox], prompt: str, out_image_path: str):
-    image = Image.open(in_image_path)  # open the image to inspect its size
+  def inpaint(self, in_image: np.ndarray, text_boxes: Sequence[TextBox], prompt: str):
+    in_image = cv2.resize(in_image, (256, 256))
+    
+    image_height, image_width = in_image.shape[:2]
+    
+    image_b64 = base64.b64decode(utils.img_to_b64(in_image))
 
     response = openai.Image.create_edit(
-        image=open(in_image_path, "rb"),
-        mask=self._make_mask(text_boxes, image.height, image.width),
+        image=image_b64,
+        mask=self._make_mask(text_boxes, image_height, image_width),
         prompt=prompt,
         n=1,
-        size=f"{image.height}x{image.width}"
+        size=f"{image_height}x{image_width}",
+        response_format="b64_json"
     )
-    url = response['data'][0]['url']
-    out_image_data = requests.get(url).content
-    out_image = Image.open(io.BytesIO(out_image_data))
-    out_image.save(out_image_path)
+
+    out_image_b64 = response['data'][0]['b64_json']
+    out_image = utils.b64_to_img(out_image_b64)
+
+    return out_image
 
 
 class StableDiffusionInpainter(Inpainter):
@@ -84,7 +92,7 @@ class StableDiffusionInpainter(Inpainter):
     mask = Image.new(mode, (width, height), background_color)
     mask_draw = ImageDraw.Draw(mask)
     for text_box in text_boxes:
-      mask_draw.rectangle(xy=(text_box.x, text_box.y, text_box.x + text_box.h, text_box.y + text_box.w),
+      mask_draw.rectangle(xy=(text_box.y, text_box.x, text_box.y + text_box.h, text_box.x + text_box.w),
                           fill=mask_color)
     return mask
 
