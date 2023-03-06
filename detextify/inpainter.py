@@ -46,8 +46,6 @@ class DalleInpainter(Inpainter):
     return bytes_arr.getvalue()
 
   def inpaint(self, in_image: np.ndarray, text_boxes: Sequence[TextBox], prompt: str):
-    in_image = cv2.resize(in_image, (256, 256))
-    
     image_height, image_width = in_image.shape[:2]
     
     image_b64 = base64.b64decode(utils.img_to_b64(in_image))
