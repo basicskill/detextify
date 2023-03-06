@@ -1,6 +1,6 @@
 import os
 from typing import Dict, Optional, Sequence
-from detextify.text_detector import TextBox
+from detextify.utils import TextBox
 
 
 def convert_to_text_box(result: Dict) -> Optional[TextBox]:
@@ -16,11 +16,11 @@ def convert_to_text_box(result: Dict) -> Optional[TextBox]:
     if all([key in value for key in ['x', 'y', 'height', 'width']]):
         x = value["x"]
         y = value["y"]
-        h = value["width"]   # notice meaning flip
-        w = value["height"]  # notice meaning flip
+        h = value["height"]
+        w = value["width"]
 
-        return TextBox(x=int(x * original_h / 100.0),
-                       y=int(y * original_w / 100.0),
+        return TextBox(y=int(y * original_h / 100.0),
+                       x=int(x * original_w / 100.0),
                        h=int(h * original_h / 100.0),
                        w=int(w * original_w / 100.0))
 

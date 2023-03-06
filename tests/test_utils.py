@@ -1,6 +1,6 @@
 import unittest
 
-from detextify.text_detector import TextBox
+from detextify.utils import TextBox
 import detextify.utils as utils
 
 

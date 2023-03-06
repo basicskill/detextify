@@ -1,5 +1,5 @@
 from detextify.inpainter import Inpainter
-from detextify.text_detector import TextDetector
+from detextify.utils import TextDetector
 
 
 class Detextifier:
