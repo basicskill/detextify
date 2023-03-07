@@ -1,3 +1,4 @@
+import os
 from detextify.utils import TextBox
 from paddleocr import PaddleOCR
 from typing import Sequence
@@ -5,6 +6,7 @@ import numpy as np
 
 import logging
 paddle_logger = logging.getLogger("ppocr").setLevel(logging.ERROR)
+
 
 # This class is separate from `text_detector.py` because it depends on the paddle library, which has many wheels
 # (see https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/develop/install/pip/linux-pip.html).
@@ -15,14 +17,25 @@ paddle_logger = logging.getLogger("ppocr").setLevel(logging.ERROR)
 class PaddleTextDetector:
   """Uses PaddleOCR for text detection: https://github.com/PaddlePaddle/PaddleOCR"""
 
-  def __init__(self, pad_size: int = 30):
+  def __init__(self, pad_size: int = 30, base_dir: str = None):
     """
     Args:
       pad_size: Empirically, Paddle returns text boxes that are quite tight. When we mask out the text boxes and the
         text is not masked out completely, the in-painting models regenerate text. The padding adds a safety margin to
         the text boxes to prevent such situations.
     """
-    self.ocr = PaddleOCR(use_angle_cls=True, use_gpu=True, lang="en")
+    kwargs = {"lang": "en"}
+    if base_dir is not None:
+      self.base_dir = os.path.abspath(base_dir)
+      kwargs.update({
+        "det_model_dir": os.path.join(self.base_dir, "whl", "det", "en"),
+        "rec_model_dir": os.path.join(self.base_dir, "whl", "rec", "en"),
+        "cls_model_dir": os.path.join(self.base_dir, "whl", "cls", "en"),
+        "layout_model_dir": os.path.join(self.base_dir, "whl", "layout", "en"),
+        "table_model_dir": os.path.join(self.base_dir, "whl", "table", "en"),
+      })
+
+    self.ocr = PaddleOCR(**kwargs)
     self.pad_size = pad_size
 
   def detect_text(self, image: np.ndarray) -> Sequence[TextBox]:
